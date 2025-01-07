@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./car_pooling/API-code",
+        "./car_pooling/db"
+    ]
+}
