@@ -71,7 +71,7 @@ class UserInformation(BaseModel):
 class BookARide(BaseModel):
     UserID:int
     RideID:Optional[int]
-    seats_booked:int
+    Seats_Booked:int
     booking_status:bool
     
 

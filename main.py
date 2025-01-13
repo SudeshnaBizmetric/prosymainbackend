@@ -149,17 +149,39 @@ def search_rides(
     no_of_seats: int,
     db: Session = Depends(get_db)
 ):
-    # Ensure date comparison matches only the date portion of a datetime
+    # date comparison matches only the date portion of a datetime
     rides = db.query(PublishRide).filter(
-        PublishRide.pickup.ilike(f"%{pickup}%"),  # Case-insensitive partial match
-        PublishRide.destination.ilike(f"%{destination}%"),  # Case-insensitive partial match
-        func.date(PublishRide.date) == date,  # Match only the date part
-        PublishRide.No_Of_Seats >= no_of_seats  # Ensure sufficient seats are available
+        PublishRide.pickup.ilike(f"%{pickup}%"),  
+        PublishRide.destination.ilike(f"%{destination}%"),  
+        func.date(PublishRide.date) == date, 
+        PublishRide.No_Of_Seats >= no_of_seats  
     ).all()
-
+    
+    
+    
     if not rides:
         return {"message": "No rides found.", "rides": []}
-    return {"message": "Rides found.", "rides": rides}
+
+    
+    ride_details = [
+        {
+            "ride_id": ride.id,  
+            "pickup": ride.pickup,
+            "destination": ride.destination,
+            "date": ride.date,
+            "No_Of_Seats": ride.No_Of_Seats,
+            "Fare": ride.Fare,
+            "Car_Type": ride.Car_Type,
+            "Car_Number": ride.Car_Number,
+            "stopovers": ride.stopovers,
+            "StopOver_Fare": ride.StopOver_Fare,
+            "time": ride.time,
+            "instant_booking": ride.instant_booking,
+        }
+        for ride in rides
+    ]
+
+    return {"message": "Rides found.", "rides": ride_details}
  
      
     
@@ -167,9 +189,11 @@ def search_rides(
 @app.post("/v1/bookings_instant", response_model=Schema.BookARide, status_code=201)
 def book_ride(booking_data: Schema.BookARide, rides: Session = Depends(get_db), current_userid: Models.models.Users = Depends(get_current_user)):
     try:
+        
+        ride_id = booking_data.RideID
 
-      
-        booking = Services.BookRideService.book_ride_instant(rides, booking_data, UserID=current_userid.id ,RideID=Models.models.PublishRide.id)
+        
+        booking = Services.BookRideService.book_ride_instant(rides, booking_data, UserID=current_userid.id, RideID=ride_id)
         
         rides.add(booking)
         rides.commit()
@@ -179,6 +203,4 @@ def book_ride(booking_data: Schema.BookARide, rides: Session = Depends(get_db), 
     except Exception as e:
         rides.rollback()
         raise HTTPException(status_code=400, detail=f"Failed to book ride: {str(e)}")
-    
-
 

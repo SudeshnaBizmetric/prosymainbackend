@@ -36,6 +36,27 @@ class PublishRide(Base):
     user = relationship("Users", back_populates="publishrides")
     bookings = relationship("Bookings", back_populates="ride", lazy="select")
 
+
+
+class Bookings(Base):
+    __tablename__ = "bookings"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    UserID = Column(Integer, ForeignKey('users.id'))
+    RideID = Column(Integer, ForeignKey('publishedrides.id'))
+    Seats_Booked = Column(Integer)
+    booking_status = Column(Boolean,default=False, nullable=False)
+    # Relationships
+    user = relationship("Users", back_populates="bookings")
+    ride = relationship("PublishRide", back_populates="bookings")
+
+
+
+
+
+
+
+
+
 # class UserInformation(Base):
 #     __tablename__ = "userExtraDetails"  
 #     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -50,15 +71,3 @@ class PublishRide(Base):
 #     # Relationships
 #     user = relationship("Users", back_populates="userinformation")
 
-
-
-class Bookings(Base):
-    __tablename__ = "bookings"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    UserID = Column(Integer, ForeignKey('users.id'))
-    RideID = Column(Integer, ForeignKey('publishedrides.id'))
-    Seats_Booked = Column(Integer)
-    booking_status = Column(Boolean,default=False, nullable=False)
-    # Relationships
-    user = relationship("Users", back_populates="bookings")
-    ride = relationship("PublishRide", back_populates="bookings")
