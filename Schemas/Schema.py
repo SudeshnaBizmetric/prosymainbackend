@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Optional ,List
 from pydantic import BaseModel, EmailStr, Field
 
@@ -5,7 +6,7 @@ class Users(BaseModel):
     
     Name: str = Field(..., min_length=3, max_length=50)  
     E_mail: EmailStr
-    Phone_number: int  
+    Phone_number: str = Field(..., min_length=10, max_length=10) 
     password: str = Field(..., min_length=8)  
 
     class Config:
@@ -32,9 +33,10 @@ class PublishRide(BaseModel):
     Rules_: Optional[str] = None 
     Fare: int
     StopOver_Fare:Optional[List[StopoverFareType] ] 
-    Car_Number: int
+    Car_Number: str
     Car_Type: str
     No_Of_Seats: int
+    instant_booking:Optional [bool ]= False
 
 class Config:
         orm_mode = True
@@ -66,3 +68,12 @@ class UserInformation(BaseModel):
     class Config:
         orm_mode = True
 
+class BookARide(BaseModel):
+    UserID:int
+    RideID:Optional[int]
+    seats_booked:int
+    booking_status:bool
+    
+
+    class Config:
+        orm_mode = True

@@ -2,9 +2,9 @@ import secrets
 from fastapi import HTTPException
 from jose import jwt
 from datetime import timedelta, timezone, datetime
-
+import os
 # Generate a secret key (to be stored securely in production)
-secret = secrets.token_hex(32)
+secret = os.getenv("JWT_SECRET", "fallback_secret")
 algorithm = "HS256"
 access_token_days = 45  # Expiration in days
 

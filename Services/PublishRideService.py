@@ -21,7 +21,8 @@ def Publish_Ride(Rides: Session, Ride: Schemas.Schema.PublishRide,UserID:int):
         
         Car_Number=Ride.Car_Number,
         Car_Type=Ride.Car_Type,
-        No_Of_Seats=Ride.No_Of_Seats
+        No_Of_Seats=Ride.No_Of_Seats,
+        instant_booking=Ride.instant_booking
     )
 
     try:
@@ -38,3 +39,4 @@ def get_rides_by_userid(Rides: Session, UserID: int):
 
 def get_stopovers_by_rideid(Rides: Session, RideID: int):
     return Rides.query(Models.models.PublishRide).filter(RideID == Models.models.PublishRide.id).all()
+

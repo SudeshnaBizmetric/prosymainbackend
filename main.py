@@ -1,7 +1,9 @@
-from typing import List
+import datetime
+from typing import List ,Optional
 from fastapi import Depends, FastAPI ,HTTPException ,File, Query, UploadFile
 from fastapi.security import OAuth2PasswordBearer
 import Models.models 
+import Services.BookRideService
 import Services.PublishRideService
 import Services.User_Service
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,9 +18,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from Models.models import Users
-import os
-
-
+from sqlalchemy import and_, cast, Date
+from Models.models import PublishRide
+from sqlalchemy.sql import func
 
 security = HTTPBearer()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -135,21 +137,48 @@ def save_user_extra_details(user_info:Schema.UserInformation,users:Session=Depen
 
 @app.get("/v1/users_info/{id}")
 def get_user_entrainfo(id:int,users:Session=Depends(get_db)):
-    return Services.User_Service.get_user(users,id)
+    return Services.User_Service.get_user_entrainfo(users,id)
 
-@app.get("/v1/rides/search" , response_model=List[Schema.PublishRide])
-def search_rides(pickup_location: str = Query(None), 
-                 destination_location: str = Query(None), 
-                 Date: str = Query(None), 
-                 no_Of_Seats: int = Query(None), 
-                 db: Session = Depends(get_db)):
-    query = db.query(Models.models.PublishRide)
-    if pickup_location:
-        query=query.filter(Schema.PublishRide.pickup==pickup_location)
-    if destination_location:
-        query=query.filter(Schema.PublishRide.destination==destination_location)
-    if Date:
-        query=query.filter(Schema.PublishRide.date==Date)
-    if no_Of_Seats:
-        query=query.filter(Schema.PublishRide.No_Of_Seats>=no_Of_Seats)
-    return query.all()
+from fastapi import HTTPException
+
+@app.get("/v1/search-rides")
+def search_rides(
+    pickup: str,
+    destination: str,
+    date: str,
+    no_of_seats: int,
+    db: Session = Depends(get_db)
+):
+    # Ensure date comparison matches only the date portion of a datetime
+    rides = db.query(PublishRide).filter(
+        PublishRide.pickup.ilike(f"%{pickup}%"),  # Case-insensitive partial match
+        PublishRide.destination.ilike(f"%{destination}%"),  # Case-insensitive partial match
+        func.date(PublishRide.date) == date,  # Match only the date part
+        PublishRide.No_Of_Seats >= no_of_seats  # Ensure sufficient seats are available
+    ).all()
+
+    if not rides:
+        return {"message": "No rides found.", "rides": []}
+    return {"message": "Rides found.", "rides": rides}
+ 
+     
+    
+
+@app.post("/v1/bookings_instant", response_model=Schema.BookARide, status_code=201)
+def book_ride(booking_data: Schema.BookARide, rides: Session = Depends(get_db), current_userid: Models.models.Users = Depends(get_current_user)):
+    try:
+
+      
+        booking = Services.BookRideService.book_ride_instant(rides, booking_data, UserID=current_userid.id ,RideID=Models.models.PublishRide.id)
+        
+        rides.add(booking)
+        rides.commit()
+        rides.refresh(booking)
+         
+        return booking
+    except Exception as e:
+        rides.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to book ride: {str(e)}")
+    
+
+
