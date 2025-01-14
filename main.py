@@ -187,20 +187,36 @@ def search_rides(
     
 
 @app.post("/v1/bookings_instant", response_model=Schema.BookARide, status_code=201)
-def book_ride(booking_data: Schema.BookARide, rides: Session = Depends(get_db), current_userid: Models.models.Users = Depends(get_current_user)):
+def book_ride(
+    booking_data: Schema.BookARide, 
+    rides: Session = Depends(get_db), 
+    current_user: Models.models.Users = Depends(get_current_user)
+):
     try:
-        
-        ride_id = booking_data.RideID
+        # Fetch the ride details using RideID
+        ride_record = rides.query(Models.models.PublishRide).filter(
+            Models.models.PublishRide.id == booking_data.RideID
+        ).first()
 
+        if not ride_record:
+            raise HTTPException(status_code=404, detail="Ride not found")
+
+        # Call the booking service to process the booking
+        booking = Services.BookRideService.book_ride_instant(
+            rides, 
+            booking_data, 
+            UserID=current_user.id, 
+            RideID=booking_data.RideID, 
+            seats=booking_data.Seats_Booked  # Pass the number of seats requested by the user
+        )
         
-        booking = Services.BookRideService.book_ride_instant(rides, booking_data, UserID=current_userid.id, RideID=ride_id)
-        
-        rides.add(booking)
-        rides.commit()
-        rides.refresh(booking)
-         
         return booking
+
+    except HTTPException as e:
+        raise e
     except Exception as e:
         rides.rollback()
-        raise HTTPException(status_code=400, detail=f"Failed to book ride: {str(e)}")
-
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to book ride: {str(e)}"
+        )

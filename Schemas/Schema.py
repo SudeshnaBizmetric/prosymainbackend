@@ -73,7 +73,7 @@ class BookARide(BaseModel):
     RideID:Optional[int]
     Seats_Booked:int
     booking_status:bool
-    
+    seats_remaining:int
 
     class Config:
         orm_mode = True

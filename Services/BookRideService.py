@@ -1,28 +1,64 @@
 from fastapi import FastAPI, HTTPException
+from sqlalchemy import func
 import Schemas.Schema
 import Models.models
 from sqlalchemy.orm import Session
 
 
-
-def book_ride_instant(Rides: Session, Ride: Schemas.Schema.BookARide, UserID: int,RideID:int):
-   
-
-    
-    db_Rides = Models.models.Bookings(
-        UserID=UserID,
-        RideID=RideID,
-        Seats_Booked=Ride.Seats_Booked,
-        booking_status=True
-    )
-    
+def book_ride_instant(
+    Rides: Session, 
+    Ride: Schemas.Schema.BookARide, 
+    UserID: int, 
+    RideID: int, 
+    seats: int
+):
     try:
-       
+        # Fetch the ride details using RideID
+        ride_record = Rides.query(Models.models.PublishRide).filter(
+            Models.models.PublishRide.id == RideID
+        ).first()
+
+        if not ride_record:
+            raise HTTPException(status_code=404, detail="Ride not found")
+
+        # Calculate the number of seats already booked
+        booked_seats = Rides.query(Models.models.Bookings).filter(
+            Models.models.Bookings.RideID == RideID
+        ).with_entities(func.sum(Models.models.Bookings.Seats_Booked)).scalar() or 0
+
+        # Calculate remaining seats
+        remaining_seats = ride_record.No_Of_Seats - booked_seats
+
+        # Check if enough seats are available
+        if remaining_seats < seats:
+            raise HTTPException(status_code=400, detail="Not enough seats available")
+
+        # Create a new booking
+        db_Rides = Models.models.Bookings(
+            UserID=UserID,
+            RideID=RideID,
+            Seats_Booked=seats,
+            booking_status=True,
+            seats_remaining=remaining_seats - seats  # Update the remaining seats
+        )
+        
+        # Update the number of booked seats for this ride
+        # (This is optional, depending on how you want to track the available seats)
+        ride_record.booked_seats = booked_seats + seats
+        Rides.commit()
+
+        # Add the new booking
         Rides.add(db_Rides)
         Rides.commit()
         Rides.refresh(db_Rides)
+        
         return db_Rides
+
+    except AttributeError as e:
+        raise HTTPException(status_code=400, detail="Attribute error: Check input data")
     except Exception as e:
         Rides.rollback()
-        raise HTTPException(status_code=400, detail=f"Failed to book ride: {str(e)}")
-
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to book ride: {e.__class__.__name__} - {str(e)}"
+        )

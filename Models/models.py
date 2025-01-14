@@ -45,6 +45,7 @@ class Bookings(Base):
     RideID = Column(Integer, ForeignKey('publishedrides.id'))
     Seats_Booked = Column(Integer)
     booking_status = Column(Boolean,default=False, nullable=False)
+    seats_remaining=Column(Integer)
     # Relationships
     user = relationship("Users", back_populates="bookings")
     ride = relationship("PublishRide", back_populates="bookings")
