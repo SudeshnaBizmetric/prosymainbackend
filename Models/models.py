@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, JSON
 from database import Base
 from sqlalchemy.orm import relationship
-from enum import Enum
+
 class Users(Base):
     __tablename__ = "users"  # Ensure this matches in all cases
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -12,8 +12,8 @@ class Users(Base):
 
     # Relationships
     publishrides = relationship("PublishRide", back_populates="user", lazy="select")
-    # userinformation = relationship("UserInformation", back_populates="user", lazy="select")
     bookings = relationship("Bookings", back_populates="user", lazy="select")
+    requests = relationship("RideRequest", back_populates="user", lazy="select")
 
 class PublishRide(Base):
     __tablename__ = "publishedrides"  
@@ -35,8 +35,7 @@ class PublishRide(Base):
     # Relationships
     user = relationship("Users", back_populates="publishrides")
     bookings = relationship("Bookings", back_populates="ride", lazy="select")
-
-
+    requests = relationship("RideRequest", back_populates="publishrides", lazy="select")
 
 class Bookings(Base):
     __tablename__ = "bookings"
@@ -44,16 +43,24 @@ class Bookings(Base):
     UserID = Column(Integer, ForeignKey('users.id'))
     RideID = Column(Integer, ForeignKey('publishedrides.id'))
     Seats_Booked = Column(Integer)
-    booking_status = Column(Boolean,default=False, nullable=False)
-    seats_remaining=Column(Integer)
+    booking_status = Column(Boolean, default=False, nullable=False)
+    seats_remaining = Column(Integer)
     # Relationships
     user = relationship("Users", back_populates="bookings")
     ride = relationship("PublishRide", back_populates="bookings")
 
+class RideRequest(Base):
+    __tablename__ = "riderequests"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    UserID = Column(Integer, ForeignKey('users.id'))  # Reference to the user making the request
+    RideID = Column(Integer, ForeignKey('publishedrides.id'))  # Reference to the ride being requested
+    Seats_Requested = Column(Integer, nullable=False)  # Number of seats requested
+   
+    
 
-
-
-
+    # Relationships
+    user = relationship("Users", back_populates="requests")  # Relationship with Users
+    publishrides = relationship("PublishRide", back_populates="requests")  # Relationship with PublishRide
 
 
 

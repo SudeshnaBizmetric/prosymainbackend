@@ -62,3 +62,52 @@ def book_ride_instant(
             status_code=400, 
             detail=f"Failed to book ride: {e.__class__.__name__} - {str(e)}"
         )
+
+
+def request_ride(
+    db_session: Session,
+    ride_request: Schemas.Schema.RequestRide,
+    UserID: int,
+):
+    print("Received ride request:", ride_request)
+    try:
+        # Fetch the ride details using the RideID from the `PublishRide` table
+        ride_record = db_session.query(Models.models.PublishRide).filter(
+            Models.models.PublishRide.id == ride_request.RideID
+        ).first()
+
+        if not ride_record:
+            raise HTTPException(status_code=404, detail="Ride not found")
+
+        # Ensure the user is not requesting their own ride
+        if ride_record.UserID == UserID:
+            raise HTTPException(
+                status_code=400, detail="Cannot request your own published ride"
+            )
+
+        # Create a new request ride record
+        db_request_ride = Models.models.RideRequest(
+            UserID=UserID,
+            RideID=ride_request.RideID,
+            Seats_Requested=ride_request.Seats_Requested,
+           
+        )
+
+        # Save the request to the database
+        db_session.add(db_request_ride)
+        db_session.commit()
+        db_session.refresh(db_request_ride)
+
+        # Optionally, notify the driver about the request (add logic as needed)
+
+        return db_request_ride
+
+    
+    except Exception as e:
+        db_session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Failed to request ride: {e.__class__.__name__} - {str(e)}",
+        )
+
+

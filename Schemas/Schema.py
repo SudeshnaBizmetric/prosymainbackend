@@ -77,3 +77,11 @@ class BookARide(BaseModel):
 
     class Config:
         orm_mode = True
+
+class RequestRide(BaseModel):
+    UserID: int
+    RideID: int
+    Seats_Requested:int
+    
+    class Config:
+        orm_mode = True

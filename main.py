@@ -165,7 +165,8 @@ def search_rides(
     
     ride_details = [
         {
-            "ride_id": ride.id,  
+            "ride_id": ride.id,
+            "UserID" :ride.UserID, 
             "pickup": ride.pickup,
             "destination": ride.destination,
             "date": ride.date,
@@ -219,4 +220,43 @@ def book_ride(
         raise HTTPException(
             status_code=400, 
             detail=f"Failed to book ride: {str(e)}"
+        )
+    
+@app.post("/v1/requestrides", response_model=Schema.RequestRide, status_code=201)
+def request_rides( 
+    booking_data: Schema.RequestRide, 
+    rides: Session = Depends(get_db), 
+    current_user: Models.models.Users = Depends(get_current_user)
+):
+    try:
+        print("Received booking data:", booking_data)
+        # Fetch the ride details using RideID
+        ride_record = rides.query(Models.models.PublishRide).filter(
+            Models.models.PublishRide.id == booking_data.RideID
+        ).first()
+
+        if not ride_record:
+            raise HTTPException(status_code=404, detail="Ride not found")
+
+        # Ensure the user is not requesting their own ride
+        if ride_record.UserID == current_user.id:
+            raise HTTPException(
+                status_code=400, detail="Cannot request your own published ride"
+            )
+
+        # Call the booking service to process the booking
+        booking = Services.BookRideService.request_ride(
+            rides, 
+            ride_request=booking_data, 
+            UserID=current_user.id
+        )
+        
+        return booking
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        rides.rollback()
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to request ride: {str(e)}"
         )
