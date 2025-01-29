@@ -40,3 +40,4 @@ def get_rides_by_userid(Rides: Session, UserID: int):
 def get_stopovers_by_rideid(Rides: Session, RideID: int):
     return Rides.query(Models.models.PublishRide).filter(RideID == Models.models.PublishRide.id).all()
 
+

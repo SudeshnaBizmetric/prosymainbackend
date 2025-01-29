@@ -129,13 +129,13 @@ def get_rides_by_userid(UserID:int,rides:Session=Depends(get_db)):
 def get_user(id:int,users:Session=Depends(get_db)):
     return Services.User_Service.get_user(users,id)
 
-@app.post("/v1/userinformation/{UserID}",response_model=Schema.UserInformation,status_code=201)
+@app.post("/v1/userextrainformation/{UserID}",response_model=Schema.UserInformation,status_code=201)
 def save_user_extra_details(user_info:Schema.UserInformation,users:Session=Depends(get_db),current_userid:Models.models.Users= Depends(get_current_user)):
     user_info.UserID=current_userid.id
     user_info=Services.User_Service.save_user_extra_details(users,user_info,current_userid.id)
     return user_info
 
-@app.get("/v1/users_info/{id}")
+@app.get("/v1/users_extra_info/{id}")
 def get_user_entrainfo(id:int,users:Session=Depends(get_db)):
     return Services.User_Service.get_user_entrainfo(users,id)
 
@@ -260,3 +260,74 @@ def request_rides(
             status_code=400, 
             detail=f"Failed to request ride: {str(e)}"
         )
+
+
+@app.get("/v1/rides/{driver_id}/requests", response_model=List[dict])
+def get_requests_for_driver(driver_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch all ride requests for rides published by a specific driver.
+    """
+    # Query the RideRequest table with necessary joins
+    ride_requests = (
+        db.query(Models.models.RideRequest)
+        .join(PublishRide, PublishRide.id == Models.models.RideRequest.RideID)
+        .filter(PublishRide.UserID == driver_id)
+        .all()
+    )
+    print(driver_id)
+    # If no requests are found, return an empty list
+    if not ride_requests:
+        return []
+
+    # Serialize the data manually or use a Pydantic model for response
+    return [
+        {
+            "request_id": request.id,
+            "ride_id": request.RideID,
+            "user_id": request.UserID,
+            "seats_requested": request.Seats_Requested,
+        }
+        for request in ride_requests
+    ]
+
+@app.get("/v1/ride-requests/{ride_id}")
+def get_ride_requests(ride_id: int, db: Session = Depends(get_db), current_user: Models.models.Users = Depends(get_current_user)):
+    # Fetch the ride details to check if the current user is the ride owner
+    ride = db.query(Models.models.PublishRide).filter_by(id=ride_id).first()
+
+    if not ride:
+        raise HTTPException(status_code=404, detail="Ride not found")
+
+    # Ensure only the owner of the ride can view its requests
+    if ride.UserID != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden to view these requests")
+
+    # Fetch all requests for the ride
+    requests = db.query(Models.models.RideRequest).filter_by(RideID=ride_id).all()
+
+    return requests
+
+
+@app.delete("/v1/deletebooking/{booking_id}")
+def deletebooking(booking_id: int, rides: Session = Depends(get_db)):
+    request = rides.query(Models.models.Bookings).filter(Models.models.Bookings.id == booking_id).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    rides.delete(request)
+    rides.commit()
+    return {"message": "Booking deleted successfully."}
+
+@app.delete("/v1/deleteride/{ride_id}")
+def deleteride(ride_id: int, rides: Session = Depends(get_db)):
+    request = rides.query(Models.models.PublishRide).filter(Models.models.PublishRide.id == ride_id).first()
+    if not request:
+        raise HTTPException(status_code=404, detail="Ride not found.")
+    rides.delete(request)
+    rides.commit()
+    return {"message": "Ride deleted successfully."}
+
+@app.put("/v1/userextrainformation/{UserID}")
+def edit_user_extra_details(user_info:Schema.UserInformation,users:Session=Depends(get_db),current_userid:Models.models.Users= Depends(get_current_user)):
+    user_info.UserID=current_userid.id
+    user_info=Services.User_Service.edit_user_extra_details(users,user_info,current_userid.id)
+    return user_info

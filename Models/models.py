@@ -14,7 +14,7 @@ class Users(Base):
     publishrides = relationship("PublishRide", back_populates="user", lazy="select")
     bookings = relationship("Bookings", back_populates="user", lazy="select")
     requests = relationship("RideRequest", back_populates="user", lazy="select")
-
+    userinformation = relationship("UserInformation", back_populates="user", lazy="select")
 class PublishRide(Base):
     __tablename__ = "publishedrides"  
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -65,17 +65,17 @@ class RideRequest(Base):
 
 
 
-# class UserInformation(Base):
-#     __tablename__ = "userExtraDetails"  
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     UserID = Column(Integer, ForeignKey('users.id')) 
-#     About = Column(String(1000))
-#     Vehicle = Column(String(50))
-#     Travel_Preference_Music = Column(String(50))
-#     Travel_Preference_Pets = Column(String(50))
-#     Travel_Preference_Smoking = Column(String(50))
-#     Travel_Preference_Conversation = Column(String(50))
-    
-#     # Relationships
-#     user = relationship("Users", back_populates="userinformation")
+class UserInformation(Base):
+    __tablename__ = "userextrainformation"  
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    UserID = Column(Integer, ForeignKey('users.id')) 
+    About = Column(String(1000))
+    Vehicle = Column(String(50))
+    Travel_Preference_Music = Column(String(50))
+    Travel_Preference_Pets = Column(String(50))
+    Travel_Preference_Smoking = Column(String(50))
+    Travel_Preference_Conversation = Column(String(50))
+    isposted = Column(Boolean, default=False)
+    # Relationships
+    user = relationship("Users", back_populates="userinformation")
 

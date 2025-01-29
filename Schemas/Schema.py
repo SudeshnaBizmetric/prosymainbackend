@@ -63,7 +63,7 @@ class UserInformation(BaseModel):
     Travel_Preference_Pets: str
     Travel_Preference_Smoking: str
     Travel_Preference_Conversation: str
-    
+    isposted:bool=False
 
     class Config:
         orm_mode = True

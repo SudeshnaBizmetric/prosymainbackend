@@ -33,17 +33,16 @@ def book_ride_instant(
         if remaining_seats < seats:
             raise HTTPException(status_code=400, detail="Not enough seats available")
 
-        # Create a new booking
+        
         db_Rides = Models.models.Bookings(
             UserID=UserID,
             RideID=RideID,
             Seats_Booked=seats,
             booking_status=True,
-            seats_remaining=remaining_seats - seats  # Update the remaining seats
+            seats_remaining=remaining_seats - seats  
         )
         
-        # Update the number of booked seats for this ride
-        # (This is optional, depending on how you want to track the available seats)
+        
         ride_record.booked_seats = booked_seats + seats
         Rides.commit()
 

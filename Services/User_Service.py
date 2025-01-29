@@ -25,16 +25,6 @@ def get_user(users: Session, id: int):
     return users.query(Models.models.Users).filter(Models.models.Users.id==id).first()
 
 def save_user_extra_details( user:Session,user_info:Schemas.Schema.UserInformation,UserID:int):
-    # allowed_files=["jpg","jpeg","png"]
-    # if allowed_files not in file.filename:
-    #     raise Exception("Invalid File Format")
-    
-    # file_ext=file.filename.split(".")[-1]
-    # file_name=str(uuid4())+"."+file_ext
-    # file_path=os.path.join("uploads",file_name)
-
-    # with open(file_path, "wb") as buffer:
-    #    buffer.write(file.read()) 
 
     db_user_info=Models.models.UserInformation(
         UserID=UserID,
@@ -43,7 +33,8 @@ def save_user_extra_details( user:Session,user_info:Schemas.Schema.UserInformati
         Travel_Preference_Music=user_info.Travel_Preference_Music,
         Travel_Preference_Pets=user_info.Travel_Preference_Pets,
         Travel_Preference_Smoking=user_info.Travel_Preference_Smoking,
-        Travel_Preference_Conversation=user_info.Travel_Preference_Conversation
+        Travel_Preference_Conversation=user_info.Travel_Preference_Conversation,
+        isposted=user_info.isposted
     )
 
     user.add(db_user_info)
@@ -52,4 +43,22 @@ def save_user_extra_details( user:Session,user_info:Schemas.Schema.UserInformati
     return db_user_info
 
 def get_user_entrainfo(users: Session, id: int):
-    return users.query(Models.models.UserInformation).filter(Models.models.UserInformation.id==id).first()
+    return users.query(Models.models.UserInformation).filter(Models.models.UserInformation.UserID==id).first()
+
+def edit_user_extra_details(user:Session,user_extra_info:Schemas.Schema.UserInformation,UserID:int):
+    db_user_info=Models.models.UserInformation(
+        UserID=UserID,
+        About=user_extra_info.About,
+        Vehicle=user_extra_info.Vehicle,
+        Travel_Preference_Music=user_extra_info.Travel_Preference_Music,
+        Travel_Preference_Pets=user_extra_info.Travel_Preference_Pets,
+        Travel_Preference_Smoking=user_extra_info.Travel_Preference_Smoking,
+        Travel_Preference_Conversation=user_extra_info.Travel_Preference_Conversation,
+        isposted=user_extra_info.isposted
+        
+    )
+
+    user.query(Models.models.UserInformation).filter(Models.models.UserInformation.UserID==UserID).update(db_user_info)
+    user.commit()
+    user.refresh(db_user_info)
+    return db_user_info
