@@ -62,3 +62,9 @@ def edit_user_extra_details(user:Session,user_extra_info:Schemas.Schema.UserInfo
     user.commit()
     user.refresh(db_user_info)
     return db_user_info
+
+def deleteuseraccount(users:Session,id:int):
+    user=users.query(Models.models.Users).filter(Models.models.Users.id==id).first()
+    users.delete(user)
+    users.commit()
+    return user

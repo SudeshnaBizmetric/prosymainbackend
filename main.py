@@ -1,6 +1,9 @@
 import datetime
+from pathlib import Path
+from sqlalchemy import or_
 from typing import List ,Optional
 from fastapi import Depends, FastAPI ,HTTPException ,File, Query, UploadFile
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 import Models.models 
 import Services.BookRideService
@@ -21,7 +24,8 @@ from Models.models import Users
 from sqlalchemy import and_, cast, Date
 from Models.models import PublishRide
 from sqlalchemy.sql import func
-
+import shutil
+import os
 security = HTTPBearer()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -33,7 +37,7 @@ origins = [
 ]
 
 UPLOAD_FOLDER = 'uploads'
-#os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,  #frontend URL
@@ -151,8 +155,10 @@ def search_rides(
 ):
     # date comparison matches only the date portion of a datetime
     rides = db.query(PublishRide).filter(
-        PublishRide.pickup.ilike(f"%{pickup}%"),  
-        PublishRide.destination.ilike(f"%{destination}%"),  
+        PublishRide.pickup.ilike(f"%{pickup}%"),
+        or_(PublishRide.destination.ilike(f"%{destination}%"),
+            PublishRide.stopovers.ilike(f"%{destination}%")),  
+         
         func.date(PublishRide.date) == date, 
         PublishRide.No_Of_Seats >= no_of_seats  
     ).all()
@@ -331,3 +337,73 @@ def edit_user_extra_details(user_info:Schema.UserInformation,users:Session=Depen
     user_info.UserID=current_userid.id
     user_info=Services.User_Service.edit_user_extra_details(users,user_info,current_userid.id)
     return user_info
+
+@app.get("/v1/bookeduserinfo/{id}")
+def getbookeduserinfo(id: int, db: Session = Depends(get_db)):
+    user = db.query(Models.models.Users).filter(Models.models.Users.id == id).first()
+    if not user:
+        return {"message": "User not found"}  # Return a proper response if user is null
+    return user
+
+@app.get("/v1/bookeduserextrainfo/{id}")
+def getbookeduserinfo(id: int, db: Session = Depends(get_db)):
+    user = db.query(Models.models.UserInformation).filter(Models.models.UserInformation.UserID == id).first()
+    if not user:
+        return {"message": "User not found"}  # Return a proper response if user is null
+    return user
+
+@app.get("/v1/rideid")
+def get_booking_id(id: int, db: Session = Depends(get_db)):  # Accept id as a query parameter
+    booking = db.query(Models.models.Bookings).filter(Models.models.Bookings.id == id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking ID not found")
+    return booking
+
+@app.post("/upload-profile-picture/{user_id}")
+async def upload_profile_picture(user_id: int, file: UploadFile = File(), db: Session = Depends(get_db)):
+    # Check if user exists
+    user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Define file path
+    file_path = Path(UPLOAD_FOLDER) / f"{user_id}_{file.filename}"
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Check if profile picture entry exists
+    profile_picture = db.query(Models.models.ProfilePicture).filter(Models.models.ProfilePicture.user_id == user_id).first()
+    
+    if profile_picture:
+        # Remove old file before updating (if exists)
+        if os.path.exists(profile_picture.image_path):
+            os.remove(profile_picture.image_path)
+        profile_picture.image_path = str(file_path)  # Update existing record
+    else:
+        new_profile_picture = Models.models.ProfilePicture(user_id=user_id, image_path=str(file_path))
+        db.add(new_profile_picture)
+
+    db.commit()
+    
+    return {"message": "Profile picture uploaded successfully", "profile_picture": str(file_path)}
+
+@app.get("/user/{user_id}/profile-picture")
+def get_user_profile_picture(user_id: int, db: Session = Depends(get_db)):
+    profile_picture = db.query(Models.models.ProfilePicture).filter(Models.models.ProfilePicture.user_id == user_id).first()
+    
+    if not profile_picture:
+        raise HTTPException(status_code=404, detail="Profile picture not found")
+
+    # Return image file
+    return FileResponse(profile_picture.image_path, media_type="image/jpeg")
+
+@app.delete("/v1/deleteuser/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully."}

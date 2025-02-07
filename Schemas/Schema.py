@@ -85,3 +85,10 @@ class RequestRide(BaseModel):
     
     class Config:
         orm_mode = True
+
+class ProfilePicture(BaseModel):
+    user_id:int
+    image_path:str
+
+    class Config:
+        orm_mode = True

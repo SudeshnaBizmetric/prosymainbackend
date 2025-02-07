@@ -15,6 +15,8 @@ class Users(Base):
     bookings = relationship("Bookings", back_populates="user", lazy="select")
     requests = relationship("RideRequest", back_populates="user", lazy="select")
     userinformation = relationship("UserInformation", back_populates="user", lazy="select")
+    profile_picture = relationship("ProfilePicture", back_populates="user", uselist=False)
+    
 class PublishRide(Base):
     __tablename__ = "publishedrides"  
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -28,7 +30,7 @@ class PublishRide(Base):
     Rules_ = Column(String(1000))
     Fare = Column(String(50))
     StopOver_Fare = Column(JSON, nullable=False)
-    Car_Number = Column(String(50))
+    Car_Number = Column(String(50),unique=True)
     Car_Type = Column(String(50))
     No_Of_Seats = Column(Integer)
     instant_booking = Column(Boolean, default=False)
@@ -78,4 +80,17 @@ class UserInformation(Base):
     isposted = Column(Boolean, default=False)
     # Relationships
     user = relationship("Users", back_populates="userinformation")
+
+from sqlalchemy import Column, Integer, String, ForeignKey
+from database import Base
+from sqlalchemy.orm import relationship
+
+class ProfilePicture(Base):
+    __tablename__ = "profile_pictures"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True)  # Foreign key to Users table
+    image_path = Column(String(255), nullable=False)  # Path or URL to the image
+
+    user = relationship("Users", back_populates="profile_picture")  # Relationship with Users
 
