@@ -4,21 +4,29 @@ import Schemas.Schema
 import Models.models
 from sqlalchemy.orm import Session
 
-def Publish_Ride(Rides: Session, Ride: Schemas.Schema.PublishRide,UserID:int):
+from datetime import datetime
+import pytz
+
+def correct_date_format(date_str: str):
+    """Ensure the date is correctly stored in UTC format."""
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
+    return date_obj.date()  # Ensure only date part is stored
+
+def Publish_Ride(Rides: Session, Ride: Schemas.Schema.PublishRide, UserID: int):
     serialized_stopovers = [stopover.dict() for stopover in Ride.stopovers]
     serialized_stopoverFares = [StopOver_Fare.dict() for StopOver_Fare in Ride.StopOver_Fare]
+
     db_Rides = Models.models.PublishRide(
         UserID=UserID,
         pickup=Ride.pickup, 
         destination=Ride.destination,
-        stopovers=serialized_stopovers, 
-        date=Ride.date,
+        stopovers=serialized_stopovers,
+        date=correct_date_format(Ride.date),  # Fix applied here
         time=Ride.time,
         Is_women_only=Ride.Is_women_only,
         Rules_=Ride.Rules_,
-        Fare=str(Ride.Fare),  
+        Fare=str(Ride.Fare),
         StopOver_Fare=serialized_stopoverFares,
-        
         Car_Number=Ride.Car_Number,
         Car_Type=Ride.Car_Type,
         No_Of_Seats=Ride.No_Of_Seats,
@@ -33,7 +41,7 @@ def Publish_Ride(Rides: Session, Ride: Schemas.Schema.PublishRide,UserID:int):
     except Exception as e:
         Rides.rollback()
         raise Exception(f"Failed to publish ride: {e}")
-    
+
 def get_rides_by_userid(Rides: Session, UserID: int):
     return Rides.query(Models.models.PublishRide).filter(UserID == Models.models.PublishRide.UserID).all()
 

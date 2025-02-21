@@ -1,9 +1,6 @@
-from fastapi import FastAPI ,File, UploadFile,Depends
 import Models.models
 import Schemas.Schema
 from sqlalchemy.orm import Session
-import os 
-from uuid import uuid4
 def create_user(users:Session,user:Schemas.Schema.Users):
     db_user=Models.models.Users(
         id=user.id,

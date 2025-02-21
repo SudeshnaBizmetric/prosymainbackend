@@ -25,6 +25,7 @@ from sqlalchemy import and_, cast, Date
 from Models.models import PublishRide
 from sqlalchemy.sql import func
 import shutil
+from sqlalchemy.sql import text
 import os
 security = HTTPBearer()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -32,15 +33,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 app = FastAPI()    #fastapi instance
 Base.metadata.create_all(bind=engine)   #to connect with database 
 password_crypt=CryptContext(schemes=["bcrypt"],deprecated="auto")  #for password hashing
-origins = [
-    "http://localhost:5173",
-]
+
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  #frontend URL
+    allow_origins=["*"],  #frontend URL
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
@@ -155,11 +154,9 @@ def search_rides(
 ):
     # date comparison matches only the date portion of a datetime
     rides = db.query(PublishRide).filter(
-        PublishRide.pickup.ilike(f"%{pickup}%"),
-        or_(PublishRide.destination.ilike(f"%{destination}%"),
-            PublishRide.stopovers.ilike(f"%{destination}%")),  
-         
-        func.date(PublishRide.date) == date, 
+        PublishRide.pickup.ilike(f"%{pickup}%"),  
+        PublishRide.destination.ilike(f"%{destination}%"),  
+        text("CAST(date AS DATE) = :date").params(date=date),   
         PublishRide.No_Of_Seats >= no_of_seats  
     ).all()
     
@@ -191,6 +188,8 @@ def search_rides(
     return {"message": "Rides found.", "rides": ride_details}
  
      
+ 
+     
     
 
 @app.post("/v1/bookings_instant", response_model=Schema.BookARide, status_code=201)
@@ -207,6 +206,24 @@ def book_ride(
 
         if not ride_record:
             raise HTTPException(status_code=404, detail="Ride not found")
+        
+        if ride_record.UserID == current_user.id:
+            raise HTTPException(
+                status_code=400, 
+                detail="You cannot book a ride that you have published."
+            )
+
+        if ride_record.Seats_Remaining == 0:
+            raise HTTPException(
+                status_code=400, 
+                detail="No seats available for this ride."
+            )
+
+        if ride_record.Seats_Remaining < booking_data.Seats_Booked:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Only {ride_record.Seats_Remaining} seat(s) are available."
+            )
 
         # Call the booking service to process the booking
         booking = Services.BookRideService.book_ride_instant(
@@ -225,9 +242,9 @@ def book_ride(
         rides.rollback()
         raise HTTPException(
             status_code=400, 
-            detail=f"Failed to book ride: {str(e)}"
+            detail=f"Error processing booking: {str(e)}"
         )
-    
+
 @app.post("/v1/requestrides", response_model=Schema.RequestRide, status_code=201)
 def request_rides( 
     booking_data: Schema.RequestRide, 
@@ -244,10 +261,11 @@ def request_rides(
         if not ride_record:
             raise HTTPException(status_code=404, detail="Ride not found")
 
-        # Ensure the user is not requesting their own ride
+         # Prevent the user from requesting their own ride
         if ride_record.UserID == current_user.id:
             raise HTTPException(
-                status_code=400, detail="Cannot request your own published ride"
+                status_code=400, 
+                detail="You cannot request a ride that you have published."
             )
 
         # Call the booking service to process the booking

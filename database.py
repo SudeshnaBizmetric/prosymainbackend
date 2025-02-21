@@ -1,23 +1,30 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import MySQLdb
+from sqlalchemy.exc import OperationalError
+import pyodbc
 
-database_url = "mysql://Sudeshna:admin@localhost/rideshare_db"
-
-# Create the database if it doesn't exist
-def create_database():
-    connection = MySQLdb.connect(host="localhost", user="Sudeshna", passwd="admin")
-    cursor = connection.cursor()
-    cursor.execute("CREATE DATABASE IF NOT EXISTS rideshare_db")
-    cursor.close()
-    connection.close()
-
-create_database()
-
-engine = create_engine(database_url)
-Local_Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
+
+DATABASE_URL = (
+    "mssql+pyodbc://Sudeshna:admin%40123@demoserver972.database.windows.net/demodb?"
+    "driver=ODBC+Driver+18+for+SQL+Server"
+    "&Encrypt=yes"
+    "&TrustServerCertificate=no"
+    "&Connection Timeout=30"
+)
+
+
+
+try:
+    engine = create_engine(DATABASE_URL)
+    Base.metadata.create_all(bind=engine)
+   
+
+ 
+    print("Database connected successfully and tables created.")
+except OperationalError as e:
+    print(f"Failed to connect to the database: {e}")
+Local_Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
